@@ -8,5 +8,5 @@ scipy
 geopy
 gdown
 geopandas
-
+folium
 
