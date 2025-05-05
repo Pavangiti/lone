@@ -9,4 +9,4 @@ geopy
 gdown
 geopandas
 folium
-
+streamlit-folium
