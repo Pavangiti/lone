@@ -97,3 +97,97 @@ setup_user_database()
 setup_vaccination_database()
 load_data_into_db()
 
+
+
+# ----------------- USER AUTHENTICATION SYSTEM -----------------
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Function to check if a user exists in the database
+def user_exists(username):
+    conn = create_connection(USER_DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+# Function to add a new user to the database
+def add_user(username, password):
+    conn = create_connection(USER_DB)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hash_password(password)))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        return False  # Username already exists
+
+# Function to verify login credentials
+def authenticate_user(username, password):
+    conn = create_connection(USER_DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+    stored_password = cursor.fetchone()
+    conn.close()
+    if stored_password and stored_password[0] == hash_password(password):
+        return True
+    return False
+
+# ----------------- LOGIN & SIGNUP PAGES -----------------
+def login_page():
+    st.title("🔑 Secure Login")
+    username = st.text_input("👤 Username")
+    password = st.text_input("🔑 Password", type="password")
+    
+    if st.button("Login"):
+        if authenticate_user(username, password):
+            st.session_state["authenticated"] = True
+            st.session_state["username"] = username
+            st.rerun()
+        else:
+            st.error("❌ Invalid credentials. Please try again.")
+
+    st.write("Don't have an account?")
+    if st.button("Sign Up"):
+        st.session_state["signup"] = True
+        st.rerun()
+
+def signup_page():
+    st.title("📝 Create a New Account")
+    new_username = st.text_input("👤 Choose a Username")
+    new_password = st.text_input("🔑 Choose a Password", type="password")
+    confirm_password = st.text_input("🔑 Confirm Password", type="password")
+
+    if st.button("Sign Up"):
+        if new_password != confirm_password:
+            st.error("❌ Passwords do not match. Try again.")
+        elif user_exists(new_username):
+            st.error("❌ Username already exists. Try a different one.")
+        else:
+            if add_user(new_username, new_password):
+                st.success("✅ Account created successfully! You can now log in.")
+                st.session_state["signup"] = False
+                st.rerun()
+            else:
+                st.error("❌ Something went wrong. Try again.")
+
+    st.write("Already have an account?")
+    if st.button("Go to Login"):
+        st.session_state["signup"] = False
+        st.rerun()
+
+# ----------------- AUTHENTICATION LOGIC -----------------
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+if "signup" not in st.session_state:
+    st.session_state["signup"] = False
+
+if not st.session_state["authenticated"]:
+    if st.session_state["signup"]:
+        signup_page()
+    else:
+        login_page()
+    st.stop()
+
