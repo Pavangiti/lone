@@ -1,0 +1,11 @@
+pandas
+openpyxl
+streamlit
+statsmodels
+plotly
+numpy
+scipy
+geopy
+gdown
+
+
