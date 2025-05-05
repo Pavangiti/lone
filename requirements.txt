@@ -10,3 +10,4 @@ gdown
 geopandas
 folium
 streamlit-folium
+requests
