@@ -482,12 +482,6 @@ else:
 
 
 
-
-
-
-
-
-
 st.write("### 🧪 Demographic-wise Forecast Validation")
 
 if synthea_loaded:
