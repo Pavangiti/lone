@@ -11,4 +11,3 @@ geopandas
 folium
 streamlit-folium
 requests
-hashlib
