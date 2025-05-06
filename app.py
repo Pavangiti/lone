@@ -159,7 +159,7 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 # ----------------- DASHBOARD -----------------
-st.title("📊 Vaccination Dashboard")
+st.title("📊 Vaccination Administration and Demand Forecasting")
 if st.sidebar.button("Logout"):
     st.session_state["authenticated"] = False
     st.rerun()
