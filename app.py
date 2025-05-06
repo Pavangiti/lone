@@ -8,6 +8,7 @@ from geopy.geocoders import Nominatim
 import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
+import hashlib
 
 # ----------------- DATABASE & FILE PATH SETUP -----------------
 DB_FILE = "vaccination_data.db"
