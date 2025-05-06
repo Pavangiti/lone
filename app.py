@@ -226,67 +226,66 @@ except Exception as e:
 
 
 
+import plotly.express as px
 
-# ----------------- SHOW TOTAL VACCINATION COUNTS -----------------
-
-# Count total vaccinated and non-vaccinated
+# ----------------- VACCINATION COUNTS -----------------
+st.write("### 🧮 Total Vaccination Status")
 total_vaccinated = filtered_df[filtered_df["VACCINATED"] == 1].shape[0]
 total_non_vaccinated = filtered_df[filtered_df["VACCINATED"] == 0].shape[0]
 total_count = total_vaccinated + total_non_vaccinated
 
-st.write("### 🧮 Total Vaccination Status")
-
 col1, col2, col3 = st.columns(3)
-col1.metric(label="✅ Vaccinated", value=total_vaccinated)
-col2.metric(label="❌ Non-Vaccinated", value=total_non_vaccinated)
-col3.metric(label="📊 Total Records", value=total_count)
+col1.metric("✅ Vaccinated", total_vaccinated)
+col2.metric("❌ Non-Vaccinated", total_non_vaccinated)
+col3.metric("📊 Total Records", total_count)
 
-#--------- CoMPARISON--------------------------------------------------------------------------------------------------------------------------------------------
-
+# ----------------- COMPARISON: VACCINATED VS NON -----------------
 st.write("### 📊 Vaccination Trends: Comparison Between Vaccinated & Non-Vaccinated")
 
-# Splitting data into Vaccinated & Non-Vaccinated groups
-vaccinated_df = filtered_df[filtered_df["VACCINATED"] == 1]
-non_vaccinated_df = filtered_df[filtered_df["VACCINATED"] == 0]
+vaccinated_df = filtered_df[filtered_df["VACCINATED"] == 1].copy()
+non_vaccinated_df = filtered_df[filtered_df["VACCINATED"] == 0].copy()
 
-# Creating columns for side-by-side visualization
+# Pie Charts by Ethnicity
 col1, col2 = st.columns(2)
-
-# Ethnicity Distribution
 with col1:
-    st.write("### ✅ Vaccinated - Ethnicity Distribution")
-    st.plotly_chart(px.pie(vaccinated_df, names="ETHNICITY", title="Vaccinated Ethnicity Distribution"))
+    st.write("#### ✅ Vaccinated - Ethnicity")
+    if not vaccinated_df.empty:
+        st.plotly_chart(px.pie(vaccinated_df, names="ETHNICITY", title="Vaccinated by Ethnicity"))
+    else:
+        st.info("No vaccinated data available.")
 
 with col2:
-    st.write("### ❌ Non-Vaccinated - Ethnicity Distribution")
-    st.plotly_chart(px.pie(non_vaccinated_df, names="ETHNICITY", title="Non-Vaccinated Ethnicity Distribution"))
+    st.write("#### ❌ Non-Vaccinated - Ethnicity")
+    if not non_vaccinated_df.empty:
+        st.plotly_chart(px.pie(non_vaccinated_df, names="ETHNICITY", title="Non-Vaccinated by Ethnicity"))
+    else:
+        st.info("No non-vaccinated data available.")
 
-# Gender Distribution
+# Pie Charts by Gender
 col3, col4 = st.columns(2)
 with col3:
-    st.write("### ✅ Vaccinated - Gender Distribution")
-    st.plotly_chart(px.pie(vaccinated_df, names="GENDER", title="Vaccinated Gender Distribution"))
+    st.write("#### ✅ Vaccinated - Gender")
+    if not vaccinated_df.empty:
+        st.plotly_chart(px.pie(vaccinated_df, names="GENDER", title="Vaccinated by Gender"))
 
 with col4:
-    st.write("### ❌ Non-Vaccinated - Gender Distribution")
-    st.plotly_chart(px.pie(non_vaccinated_df, names="GENDER", title="Non-Vaccinated Gender Distribution"))
+    st.write("#### ❌ Non-Vaccinated - Gender")
+    if not non_vaccinated_df.empty:
+        st.plotly_chart(px.pie(non_vaccinated_df, names="GENDER", title="Non-Vaccinated by Gender"))
 
-# Age Group Comparison (Bar Chart)
+# Bar Charts by Age Group
 col5, col6 = st.columns(2)
 with col5:
-    st.write("### ✅ Vaccinated - Age Group")
-    st.plotly_chart(px.bar(vaccinated_df, x="AGE_GROUP", title="Vaccination by Age Group"))
+    st.write("#### ✅ Vaccinated - Age Group")
+    if not vaccinated_df.empty:
+        st.plotly_chart(px.bar(vaccinated_df, x="AGE_GROUP", title="Vaccinated by Age Group"))
 
 with col6:
-    st.write("### ❌ Non-Vaccinated - Age Group")
-    st.plotly_chart(px.bar(non_vaccinated_df, x="AGE_GROUP", title="Non-Vaccination by Age Group"))
+    st.write("#### ❌ Non-Vaccinated - Age Group")
+    if not non_vaccinated_df.empty:
+        st.plotly_chart(px.bar(non_vaccinated_df, x="AGE_GROUP", title="Non-Vaccinated by Age Group"))
 
-st.write("### 📊 Vaccination Trends (Only Vaccinated)")
-
-# Filter only vaccinated individuals
-vaccinated_df = filtered_df[filtered_df["VACCINATED"] == 1]
-
-# ----------------- MAP ETHNICITY TO RACE (If "RACE" Column Doesn't Exist) -----------------
+# ----------------- RACE MAPPING -----------------
 race_mapping = {
     "Hispanic or Latino": "Hispanic",
     "Not Hispanic or Latino": "White",
@@ -297,71 +296,42 @@ race_mapping = {
     "Other": "Other"
 }
 
-# If there's no "RACE" column, create one from "ETHNICITY"
-if "RACE" not in vaccinated_df.columns:
-    vaccinated_df["RACE"] = vaccinated_df["ETHNICITY"].map(race_mapping).fillna("Unknown")
-    filtered_df["RACE"] = filtered_df["ETHNICITY"].map(race_mapping).fillna("Unknown")
+for df_chunk in [vaccinated_df, non_vaccinated_df, filtered_df]:
+    if "RACE" not in df_chunk.columns:
+        df_chunk["RACE"] = df_chunk["ETHNICITY"].map(race_mapping).fillna("Unknown")
 
-# ----------------- SHOW RACE-BASED GRAPHS -----------------
-st.write("### 📊 Vaccination Trend by Race")
+# ----------------- BAR CHARTS BY RACE -----------------
+st.write("### 🧬 Vaccination by Race")
 
 if not vaccinated_df.empty:
-    st.plotly_chart(px.bar(vaccinated_df, x="RACE", title="Vaccination by Race", color="RACE"))
+    st.plotly_chart(px.bar(vaccinated_df, x="RACE", title="Vaccinated by Race", color="RACE"))
 else:
-    st.warning("No vaccinated data available for the selected filters.")
-
-    
-st.write("### 📊 Non-Vaccination Trend by Race")
+    st.info("No vaccinated data available.")
 
 if not non_vaccinated_df.empty:
-    if "RACE" not in non_vaccinated_df.columns:
-        non_vaccinated_df["RACE"] = non_vaccinated_df["ETHNICITY"].map(race_mapping).fillna("Unknown")
-    st.plotly_chart(px.bar(non_vaccinated_df, x="RACE", title="Non-Vaccination by Race", color="RACE"))
+    st.plotly_chart(px.bar(non_vaccinated_df, x="RACE", title="Non-Vaccinated by Race", color="RACE"))
 else:
-    st.warning("No non-vaccinated data available for the selected filters.")
+    st.info("No non-vaccinated data available.")
 
+# ----------------- RACE-BASED SUMMARY TABLE -----------------
+st.write("### 🧾 Vaccination Breakdown by Race")
 
+v_race_summary = vaccinated_df.groupby("RACE").size().reset_index(name="Vaccinated Count")
+nv_race_summary = non_vaccinated_df.groupby("RACE").size().reset_index(name="Non-Vaccinated Count")
 
-# ----------------- RACE-BASED BREAKDOWN TABLE -----------------
-st.write("### 🧬 Vaccination vs Non-Vaccination Breakdown by Race")
+race_summary = pd.merge(v_race_summary, nv_race_summary, on="RACE", how="outer").fillna(0)
+race_summary.loc[len(race_summary)] = ["Total", race_summary["Vaccinated Count"].sum(), race_summary["Non-Vaccinated Count"].sum()]
+st.dataframe(race_summary)
 
-# Ensure 'RACE' column exists
-if "RACE" not in vaccinated_df.columns:
-    vaccinated_df["RACE"] = vaccinated_df["ETHNICITY"].map(race_mapping).fillna("Unknown")
-if "RACE" not in non_vaccinated_df.columns:
-    non_vaccinated_df["RACE"] = non_vaccinated_df["ETHNICITY"].map(race_mapping).fillna("Unknown")
+# ----------------- ETHNICITY-GENDER-AGE SUMMARY -----------------
+st.write("### 📊 Summary: Ethnicity, Gender, Age Group")
 
-# Group by RACE
-vaccinated_race_summary = vaccinated_df.groupby("RACE").size().reset_index(name="Vaccinated Count")
-non_vaccinated_race_summary = non_vaccinated_df.groupby("RACE").size().reset_index(name="Non-Vaccinated Count")
+v_summary = vaccinated_df.groupby(["ETHNICITY", "GENDER", "AGE_GROUP"]).size().reset_index(name="Vaccinated Count")
+nv_summary = non_vaccinated_df.groupby(["ETHNICITY", "GENDER", "AGE_GROUP"]).size().reset_index(name="Non-Vaccinated Count")
 
-# Merge summaries
-race_summary_table = pd.merge(vaccinated_race_summary, non_vaccinated_race_summary, on="RACE", how="outer").fillna(0)
+final_summary = pd.merge(v_summary, nv_summary, on=["ETHNICITY", "GENDER", "AGE_GROUP"], how="outer").fillna(0)
+final_summary.loc[len(final_summary)] = ["Total", "Total", "Total",
+                                         v_summary["Vaccinated Count"].sum(),
+                                         nv_summary["Non-Vaccinated Count"].sum()]
 
-# Add total row
-race_summary_table.loc[len(race_summary_table)] = ["Total", race_summary_table["Vaccinated Count"].sum(), race_summary_table["Non-Vaccinated Count"].sum()]
-
-# Display table
-st.dataframe(race_summary_table)
-
-
-
-   # ----------------- SHOW SUMMARY TABLE -----------------
-# Count total vaccinated and non-vaccinated
-total_vaccinated = filtered_df[filtered_df["VACCINATED"] == 1].shape[0]
-total_non_vaccinated = filtered_df[filtered_df["VACCINATED"] == 0].shape[0]
-
-# Grouping data for summary
-vaccinated_summary = vaccinated_df.groupby(["ETHNICITY", "GENDER", "AGE_GROUP"]).size().reset_index(name="Vaccinated Count")
-non_vaccinated_summary = filtered_df[filtered_df["VACCINATED"] == 0].groupby(["ETHNICITY", "GENDER", "AGE_GROUP"]).size().reset_index(name="Non-Vaccinated Count")
-
-# Merging vaccinated and non-vaccinated summaries
-summary_table = pd.merge(vaccinated_summary, non_vaccinated_summary, on=["ETHNICITY", "GENDER", "AGE_GROUP"], how="outer").fillna(0)
-
-# Adding total counts
-summary_table.loc[len(summary_table)] = ["Total", "Total", "Total", total_vaccinated, total_non_vaccinated]
-
-# Display Table
-st.write("### 📊 Vaccination vs Non-Vaccination Breakdown")
-st.dataframe(summary_table)
-
+st.dataframe(final_summary)
