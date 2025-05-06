@@ -219,3 +219,66 @@ filtered_df = df[(df["STATE"] == state) & (df["CITY"] == city) & (df["DESCRIPTIO
 st.write(f"## 📊 Data for {city}, {state} ({', '.join(vaccine)})")
 st.dataframe(filtered_df)
 
+
+
+
+# ----------------- MAP & SUMMARY SECTION -----------------
+from geopy.geocoders import Nominatim
+import geopandas as gpd
+import folium
+from streamlit_folium import st_folium
+
+# ----------------- FUNCTION TO GET COORDINATES -----------------
+def get_lat_lon(state, city):
+    geolocator = Nominatim(user_agent="streamlit_app")
+    location = geolocator.geocode(f"{city}, {state}, USA")
+    if location:
+        return location.latitude, location.longitude
+    return None, None
+
+
+
+try:
+    # Read the GeoJSON using GeoPandas
+    city_gdf = gpd.read_file(GEOJSON_URL)
+
+    # Filter GeoJSON for the selected city
+    selected_city_boundary = city_gdf[city_gdf["CITY"].str.lower() == city.lower()]
+
+    if not selected_city_boundary.empty:
+        # Use representative point as map center
+        city_center = selected_city_boundary.geometry.representative_point().iloc[0].coords[0][::-1]
+
+        # Create Folium map centered on city
+        m = folium.Map(location=city_center, zoom_start=11)
+
+        # Add city boundary
+        folium.GeoJson(
+            selected_city_boundary.geometry,
+            style_function=lambda x: {
+                "fillOpacity": 0,
+                "color": "blue",
+                "weight": 3
+            }
+        ).add_to(m)
+
+        st.write(f"### 🗺 City Outline for {city}")
+        st_folium(m, width=800, height=500)
+    else:
+        st.warning(f"City '{city}' not found in GeoJSON.")
+except Exception as e:
+    st.error(f"Map rendering failed: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
