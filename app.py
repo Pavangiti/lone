@@ -343,27 +343,28 @@ st.dataframe(final_summary)
 
 
 
-import plotly.graph_objects as go
-import plotly.express as px
+import pandas as pd
+import numpy as np
+import requests
+from io import BytesIO
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-import numpy as np
-from io import BytesIO
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
 
-# ---------- Google Drive File IDs ----------
-data2_file_id = "1LkQeElq6GcXQr96aMCRY3dGclQJ07ZON"  # Replace with actual Synthea Excel file ID
-census_file_id = "https://drive.google.com/file/d/1Fswh6Eq_wrsf5FbpaaUve9K0KOZ6q3zg/view?usp=share_link"  # Replace with actual Census CSV file ID
+# ----------------- URLs from your links -----------------
+synthea_url = "https://docs.google.com/spreadsheets/d/1hJEb7aMjrD-EfAoN9jdhwBK2m9o0U-mh/export?format=xlsx"
+census_url = "https://drive.google.com/uc?id=1Fswh6Eq_wrsf5FbpaaUve9K0KOZ6q3zg"
 
-# Convert to downloadable URL
-def gdrive_to_url(file_id):
-    return f"https://drive.google.com/uc?id={file_id}"
+# ----------------- Load Synthea Excel -----------------
+st.write("### 🔮 Vaccination Forecast (Synthea Dataset)")
 
-# ---------- Load Synthea Data ----------
 try:
-    response = requests.get(gdrive_to_url(data2_file_id))
+    response = requests.get(synthea_url)
     excel_data = BytesIO(response.content)
 
-    full_df = pd.read_excel(excel_data, sheet_name="not_vaccinated_analysis (3)", usecols=["YEAR", "VACCINATED"])
+    full_df = pd.read_excel(excel_data, engine="openpyxl", sheet_name="not_vaccinated_analysis (3)", usecols=["YEAR", "VACCINATED"])
     full_df["VACCINATED"] = full_df["VACCINATED"].astype(str).str.lower().map({"true": 1, "false": 0})
     vaccinated_full = full_df[full_df["VACCINATED"] == 1]
 
@@ -371,42 +372,38 @@ try:
     model = ARIMA(yearly_vax["vaccinated_count"], order=(1, 1, 1))
     model_fit = model.fit()
 
-    # Forecast next 5 years
     year_max = int(yearly_vax["YEAR"].max())
     future_years = list(range(year_max + 1, year_max + 6))
     forecast = model_fit.forecast(steps=5)
 
-    forecast_df = pd.DataFrame({
-        "YEAR": future_years,
-        "vaccinated_count": forecast
-    })
-
+    forecast_df = pd.DataFrame({"YEAR": future_years, "vaccinated_count": forecast})
     combined_df = pd.concat([yearly_vax, forecast_df], ignore_index=True)
 
-    st.write("### 📈 Vaccination Forecast: Synthea Dataset")
-    fig = px.line(combined_df, x="YEAR", y="vaccinated_count", markers=True, title="Forecast: Historical + 5 Years")
-    st.plotly_chart(fig)
+    st.plotly_chart(px.line(combined_df, x="YEAR", y="vaccinated_count", title="📈 Vaccination Forecast", markers=True))
     st.dataframe(combined_df)
-except Exception as e:
-    st.error(f"❌ Failed to load or forecast Synthea data: {e}")
 
-# ---------- Load Census CSV ----------
+except Exception as e:
+    st.error(f"❌ Failed to forecast Synthea data: {e}")
+
+# ----------------- Load Census CSV -----------------
+st.write("### 📡 Census vs Synthea Vaccination Comparison")
+
 try:
-    response = requests.get(gdrive_to_url(census_file_id))
+    response = requests.get(census_url)
     census_df = pd.read_csv(BytesIO(response.content))
 
     real_fully_vaccinated = census_df.get("fully_vaccinated", pd.Series()).replace(np.nan, 0).sum()
     real_partially_vaccinated = census_df.get("partially_vaccinated", pd.Series()).replace(np.nan, 0).sum()
     real_total_vaccinated = real_fully_vaccinated + real_partially_vaccinated
+
 except Exception as e:
     census_df = pd.DataFrame()
     real_total_vaccinated = 0
-    st.error(f"❌ Failed to load Census dataset: {e}")
+    st.error(f"❌ Failed to load Census data: {e}")
 
-# ---------- Comparison Chart ----------
-synthea_total = total_vaccinated if "total_vaccinated" in locals() else vaccinated_full.shape[0]
+# ----------------- Synthea vs Census Metric -----------------
+synthea_total = vaccinated_full.shape[0] if 'vaccinated_full' in locals() else 0
 
-st.write("### 📊 Vaccinated Individuals: Synthea vs Census")
 col1, col2 = st.columns(2)
 col1.metric("✅ Synthea Vaccinated", f"{synthea_total:,}")
 col2.metric("📡 Census Vaccinated", f"{int(real_total_vaccinated):,}")
@@ -415,18 +412,18 @@ compare_df = pd.DataFrame({
     "Dataset": ["Synthea", "Census"],
     "Vaccinated": [synthea_total, real_total_vaccinated]
 })
-st.plotly_chart(px.bar(compare_df, x="Dataset", y="Vaccinated", title="Vaccination Comparison", color="Dataset", text_auto=True))
+st.plotly_chart(px.bar(compare_df, x="Dataset", y="Vaccinated", title="📊 Vaccinated Comparison", color="Dataset", text_auto=True))
 
 if real_total_vaccinated > 0:
     proportion = (synthea_total / real_total_vaccinated) * 100
-    st.metric("📈 Synthea vs Census Proportion", f"{proportion:.2f}%")
+    st.metric("📈 Synthea Coverage", f"{proportion:.2f}%")
 else:
-    st.warning("⚠️ Census vaccinated total is zero — cannot compute proportion.")
+    st.warning("Census vaccinated total is zero.")
 
-# ---------- Proportion of Unvaccinated ----------
+# ----------------- Unvaccinated % Comparison -----------------
 st.write("### ❗ Unvaccinated Proportion Comparison")
 
-synthea_unvax = total_non_vaccinated if "total_non_vaccinated" in locals() else 0
+synthea_unvax = full_df[full_df["VACCINATED"] == 0].shape[0] if 'full_df' in locals() else 0
 synthea_total_pop = synthea_total + synthea_unvax
 synthea_unvax_pct = (synthea_unvax / synthea_total_pop) * 100 if synthea_total_pop > 0 else 0
 
@@ -441,7 +438,7 @@ col1, col2 = st.columns(2)
 col1.metric("🚫 Synthea Unvaccinated", f"{synthea_unvax_pct:.2f}%")
 col2.metric("🚫 Census Unvaccinated", f"{census_unvax_pct:.2f}%")
 
-# ---------- Forecast Validation ----------
+# ----------------- Forecast Validation -----------------
 st.write("### 🧪 Forecast Validation (Train/Test Split)")
 
 try:
@@ -464,17 +461,16 @@ try:
     rmse = np.sqrt(mean_squared_error(forecast_df["Actual"], forecast_df["Forecast"]))
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Actual"], name="Actual", mode="lines+markers"))
-    fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Forecast"], name="Forecast", mode="lines+markers"))
-    fig.update_layout(title="Validation: Actual vs Forecast", xaxis_title="Year", yaxis_title="Vaccinated Count")
+    fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Actual"], mode="lines+markers", name="Actual"))
+    fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Forecast"], mode="lines+markers", name="Forecast"))
+    fig.update_layout(title="📉 Forecast Validation: Actual vs Predicted", xaxis_title="Year", yaxis_title="Vaccinated Count")
 
     st.plotly_chart(fig)
     st.dataframe(forecast_df)
 
     col1, col2 = st.columns(2)
-    col1.metric("MAE", f"{mae:.2f}")
-    col2.metric("RMSE", f"{rmse:.2f}")
+    col1.metric("📏 MAE", f"{mae:.2f}")
+    col2.metric("📏 RMSE", f"{rmse:.2f}")
+
 except Exception as e:
     st.warning(f"Forecast validation failed: {e}")
-
-
