@@ -11,5 +11,4 @@ geopandas
 folium
 streamlit-folium
 requests
-openpyxl  
 scikit-learn 
