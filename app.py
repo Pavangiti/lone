@@ -192,3 +192,30 @@ if not st.session_state["authenticated"]:
         login_page()
     st.stop()
 
+
+# ----------------- MAIN DASHBOARD -----------------
+st.title("📊 Vaccination Administration and Demand Forecasting ")
+
+# Logout Button
+if st.sidebar.button("Logout"):
+    st.session_state["authenticated"] = False
+    st.rerun()
+
+# ----------------- FETCH DATA FROM DATABASE -----------------
+conn = create_connection(DB_FILE)
+df = pd.read_sql("SELECT * FROM vaccination_data", conn)
+conn.close()
+
+st.write("### 🔍 Raw Data Preview")
+st.dataframe(df.head())
+
+# ----------------- ADD FILTERS -----------------
+st.sidebar.header("🔍 Filter Data")
+state = st.sidebar.selectbox("📍 Select State", df["STATE"].dropna().unique())
+city = st.sidebar.selectbox("🏙 Select City", df[df["STATE"] == state]["CITY"].dropna().unique())
+vaccine = st.sidebar.multiselect("💉 Select Vaccine Type", df["DESCRIPTION"].dropna().unique())
+
+filtered_df = df[(df["STATE"] == state) & (df["CITY"] == city) & (df["DESCRIPTION"].isin(vaccine))]
+st.write(f"## 📊 Data for {city}, {state} ({', '.join(vaccine)})")
+st.dataframe(filtered_df)
+
