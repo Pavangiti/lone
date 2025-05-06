@@ -389,20 +389,65 @@ except Exception as e:
     st.error(f"❌ Failed to load or forecast Synthea data: {e}")
 
 # ----------------- Load Census CSV -----------------
+import streamlit as st
+import pandas as pd
+import numpy as np
+import requests
+from io import BytesIO
+import plotly.express as px
+
 st.write("### 📡 Census vs Synthea Vaccination Comparison")
 
+# Your known Synthea vaccinated count
+total_vaccinated = 3728  # Replace this with your dynamic value if needed
+
+# Optional: estimated population if needed for later percentage comparisons
+# total_population_estimate = 13802
+
 real_total_vaccinated = 0
+census_url = "YOUR_CENSUS_DATA_URL.csv"  # Replace with your actual URL
+
 try:
+    # Load census CSV from URL
     response = requests.get(census_url)
     census_df = pd.read_csv(BytesIO(response.content))
 
-    real_fully_vaccinated = census_df.get("fully_vaccinated", pd.Series()).replace(np.nan, 0).sum()
-    real_partially_vaccinated = census_df.get("partially_vaccinated", pd.Series()).replace(np.nan, 0).sum()
-    real_total_vaccinated = real_fully_vaccinated + real_partially_vaccinated
+    # Make sure required columns exist
+    if "fully_vaccinated" in census_df.columns and "partially_vaccinated" in census_df.columns:
+        # Replace NaNs with 0 and convert to numeric
+        census_df["fully_vaccinated"] = pd.to_numeric(census_df["fully_vaccinated"].fillna(0), errors='coerce')
+        census_df["partially_vaccinated"] = pd.to_numeric(census_df["partially_vaccinated"].fillna(0), errors='coerce')
+
+        # Only count people partially vaccinated who are not fully vaccinated
+        only_partially = census_df["partially_vaccinated"] - census_df["fully_vaccinated"]
+        only_partially = only_partially.apply(lambda x: max(x, 0))  # Avoid negative values
+
+        # Final realistic vaccinated estimate
+        real_total_vaccinated = census_df["fully_vaccinated"].sum() + only_partially.sum()
+    else:
+        st.warning("⚠️ Columns 'fully_vaccinated' or 'partially_vaccinated' not found in the census data.")
 
 except Exception as e:
     census_df = pd.DataFrame()
     st.error(f"❌ Failed to load Census data: {e}")
+
+# Display metrics side-by-side
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("✅ Synthea Vaccinated", f"{total_vaccinated:,}")
+with col2:
+    st.metric("📡 Census Vaccinated", f"{int(real_total_vaccinated):,}")
+
+# Bar chart comparison
+compare_vax_df = pd.DataFrame({
+    "Dataset": ["Synthea", "Census"],
+    "Vaccinated": [total_vaccinated, real_total_vaccinated]
+})
+
+fig = px.bar(compare_vax_df, x="Dataset", y="Vaccinated", title="Vaccinated Individuals Comparison")
+fig.update_layout(yaxis_title="Number of Vaccinated People")
+st.plotly_chart(fig)
+
 
 # ----------------- Metrics Display -----------------
 synthea_total = vaccinated_full.shape[0] if 'vaccinated_full' in locals() else 0
