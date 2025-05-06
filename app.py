@@ -446,7 +446,7 @@ if synthea_loaded:
     st.write("### 🧪 Forecast Validation (Train/Test Split)")
     try:
         yearly_vax = vaccinated_full.groupby("YEAR").size().reset_index(name="vaccinated_count").sort_values("YEAR")
-        test_years = 4
+        test_years = 5
         train_data = yearly_vax[:-test_years]
         test_data = yearly_vax[-test_years:]
 
