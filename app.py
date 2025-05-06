@@ -353,9 +353,9 @@ import os
 # -------- Forecast: Synthea Dataset (ARIMA) --------
 st.write("### 🔮 Forecast of Vaccination Trends (Synthea Dataset)")
 
-SYNTHETIC_DATA_PATH = "data2.xlsx"  # 🔁 Change to cloud-compatible or uploadable version
 
-if os.path.exists(SYNTHETIC_DATA_PATH):
+
+if os.path.exists(DATASET_URL_1):
     try:
         full_df = pd.read_excel(SYNTHETIC_DATA_PATH, sheet_name="not_vaccinated_analysis (3)", usecols=["YEAR", "VACCINATED"])
         full_df["VACCINATED"] = full_df["VACCINATED"].astype(str).str.lower().map({"true": 1, "false": 0})
@@ -390,10 +390,10 @@ else:
 # -------- Census Comparison --------
 st.write("### 📡 Census vs Synthea Vaccination Comparison")
 
-REALTIME_DATASET_PATH = "census_data.csv"  # 🔁 Replace with your Streamlit file uploader or valid path
 
-if os.path.exists(REALTIME_DATASET_PATH):
-    realtime_df = pd.read_csv(REALTIME_DATASET_PATH)
+
+if os.path.exists(file_id_3):
+    realtime_df = pd.read_csv(file_id_3)
 
     real_fully_vaccinated = realtime_df.get("fully_vaccinated", pd.Series()).replace(np.nan, 0).sum()
     real_partially_vaccinated = realtime_df.get("partially_vaccinated", pd.Series()).replace(np.nan, 0).sum()
@@ -453,9 +453,9 @@ col2.metric("🚫 Census Unvaccinated %", f"{census_unvax_pct:.2f}%")
 # -------- Forecast Validation (Train/Test Split) --------
 st.write("### 🧪 ARIMA Forecast Validation")
 
-if os.path.exists(SYNTHETIC_DATA_PATH):
+if os.path.exists(DATASET_URL_1):
     try:
-        full_df = pd.read_excel(SYNTHETIC_DATA_PATH, sheet_name="not_vaccinated_analysis (3)", usecols=["YEAR", "VACCINATED"])
+        full_df = pd.read_excel(DATASET_URL_1, sheet_name="not_vaccinated_analysis (3)", usecols=["YEAR", "VACCINATED"])
         full_df["VACCINATED"] = full_df["VACCINATED"].astype(str).str.lower().map({"true": 1, "false": 0})
         vaccinated_full = full_df[full_df["VACCINATED"] == 1]
         yearly_vax = vaccinated_full.groupby("YEAR").size().reset_index(name="vaccinated_count").sort_values("YEAR")
