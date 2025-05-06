@@ -446,7 +446,7 @@ if synthea_loaded:
     st.write("### 🧪 Forecast Validation (Train/Test Split)")
     try:
         yearly_vax = vaccinated_full.groupby("YEAR").size().reset_index(name="vaccinated_count").sort_values("YEAR")
-        test_years = 5
+        test_years = 4
         train_data = yearly_vax[:-test_years]
         test_data = yearly_vax[-test_years:]
 
@@ -479,58 +479,5 @@ if synthea_loaded:
         st.warning(f"Forecast validation failed: {e}")
 else:
     st.warning("⚠️ Forecast validation skipped — Synthea data not loaded.")
-
-
-
-st.write("### 🧪 Demographic-wise Forecast Validation")
-
-if synthea_loaded:
-    demo_option = st.selectbox("Select Demographic to Validate", ["AGE_GROUP", "GENDER", "RACE", "ETHNICITY"])
-    
-    if demo_option not in vaccinated_full.columns:
-        st.warning(f"Demographic '{demo_option}' not available in dataset.")
-    else:
-        demo_groups = vaccinated_full[demo_option].dropna().unique()
-        
-        for group in demo_groups:
-            group_df = vaccinated_full[vaccinated_full[demo_option] == group]
-            yearly_group = group_df.groupby("YEAR").size().reset_index(name="vaccinated_count").sort_values("YEAR")
-            
-            if len(yearly_group) < 6:
-                continue  # Skip if not enough data for train/test split
-            
-            # Train-test split
-            test_years = 2
-            train = yearly_group[:-test_years]
-            test = yearly_group[-test_years:]
-
-            try:
-                model = ARIMA(train["vaccinated_count"], order=(1, 1, 1))
-                model_fit = model.fit()
-                forecast = model_fit.forecast(steps=test_years)
-
-                forecast_df = pd.DataFrame({
-                    "YEAR": test["YEAR"].values,
-                    "Actual": test["vaccinated_count"].values,
-                    "Forecast": forecast
-                })
-
-                mae = mean_absolute_error(forecast_df["Actual"], forecast_df["Forecast"])
-                rmse = np.sqrt(mean_squared_error(forecast_df["Actual"], forecast_df["Forecast"]))
-
-                st.write(f"#### 📊 {demo_option}: {group}")
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Actual"], mode="lines+markers", name="Actual"))
-                fig.add_trace(go.Scatter(x=forecast_df["YEAR"], y=forecast_df["Forecast"], mode="lines+markers", name="Forecast"))
-                fig.update_layout(title=f"Forecast Validation for {group}", xaxis_title="Year", yaxis_title="Vaccinated Count")
-
-                st.plotly_chart(fig)
-                col1, col2 = st.columns(2)
-                col1.metric("MAE", f"{mae:.2f}")
-                col2.metric("RMSE", f"{rmse:.2f}")
-            except Exception as e:
-                st.warning(f"Forecast failed for group '{group}': {e}")
-else:
-    st.warning("Synthea data is not loaded. Cannot validate demographic forecasts.")
 
 
