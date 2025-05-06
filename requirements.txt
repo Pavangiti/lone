@@ -13,3 +13,15 @@ streamlit-folium
 requests
 scikit-learn 
 openpyxl
+
+pandas
+numpy
+requests
+openpyxl
+streamlit
+plotly
+scikit-learn
+statsmodels
+streamlit-folium
+folium
+geopy
